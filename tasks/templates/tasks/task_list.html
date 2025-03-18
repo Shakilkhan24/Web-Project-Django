@@ -1,0 +1,449 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h3 class="card-title mb-0">Task Manager</h3>
+            <div>
+                <div class="btn-group me-2">
+                    <button type="button" class="btn btn-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-sort"></i> Sort By
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item sort-option" data-sort="status">Status</a></li>
+                        <li><a class="dropdown-item sort-option" data-sort="priority">Priority</a></li>
+                        <li><a class="dropdown-item sort-option" data-sort="budget">Budget</a></li>
+                        <li><a class="dropdown-item sort-option" data-sort="start_date">Start Date</a></li>
+                        <li><a class="dropdown-item sort-option" data-sort="end_date">End Date</a></li>
+                    </ul>
+                </div>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-light" id="sortOrderBtn" data-order="asc">
+                        <i class="fas fa-sort-amount-down-alt"></i> Ascending
+                    </button>
+                </div>
+                <button type="button" class="btn btn-light ms-2" data-bs-toggle="modal" data-bs-target="#createTaskModal">
+                    <i class="fas fa-plus"></i> Create Task
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped" id="taskTable">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th scope="col">Title</th>
+                            <th scope="col">Description</th>
+                            <th scope="col">Owner 📧</th>
+                            <th scope="col">Status 📊</th>
+                            <th scope="col">Priority ⚡</th>
+                            <th scope="col">Notes 📝</th>
+                            <th scope="col">Budget 💰</th>
+                            <th scope="col">Start Date 📅</th>
+                            <th scope="col">End Date 🗓️</th>
+                            <th scope="col" class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for task in tasks %}
+                        <tr data-task-id="{{ task.id }}" class="align-middle">
+                            <td contenteditable="true" class="editable" data-field="title">{{ task.title }}</td>
+                            <td contenteditable="true" class="editable" data-field="description">{{ task.description }}</td>
+                            <td contenteditable="true" class="editable" data-field="owner">{{ task.owner }}</td>
+                            <td>
+                                <select class="form-select form-select-sm status-select" data-field="status">
+                                    {% for value, label in status_choices %}
+                                    <option value="{{ value }}" {% if task.status == value %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td>
+                                <select class="form-select form-select-sm priority-select" data-field="priority">
+                                    {% for value, label in priority_choices %}
+                                    <option value="{{ value }}" {% if task.status == value %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td contenteditable="true" class="editable" data-field="notes">{{ task.notes }}</td>
+                            <td contenteditable="true" class="editable" data-field="budget">{{ task.budget }}</td>
+                            <td><input type="date" class="form-control form-control-sm date-input" data-field="start_date" value="{{ task.start_date|date:'Y-m-d' }}"></td>
+                            <td><input type="date" class="form-control form-control-sm date-input" data-field="end_date" value="{{ task.end_date|date:'Y-m-d' }}"></td>
+                            <td class="text-center">
+                                <button class="btn btn-sm btn-danger delete-btn" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Task Modal -->
+    <div class="modal fade" id="createTaskModal" tabindex="-1" aria-labelledby="createTaskModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="createTaskModalLabel">Create New Task</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createTaskForm" class="needs-validation" novalidate>
+                        <div class="row g-3">
+                            <!-- Title -->
+                            <div class="col-md-12">
+                                <label for="createTitle" class="form-label">Title <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control form-control-lg" id="createTitle" required>
+                                <div class="invalid-feedback">
+                                    Please enter a task title.
+                                </div>
+                            </div>
+
+                            <!-- Description -->
+                            <div class="col-md-12">
+                                <label for="createDescription" class="form-label">Description</label>
+                                <textarea class="form-control" id="createDescription" rows="3" style="resize: none;"></textarea>
+                            </div>
+
+                            <!-- Owner -->
+                            <div class="col-md-6">
+                                <label for="createOwner" class="form-label">Owner Email <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                    <input type="email" class="form-control" id="createOwner" required>
+                                    <div class="invalid-feedback">
+                                        Please enter a valid email address.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Status & Priority -->
+                            <div class="col-md-6">
+                                <label for="createStatus" class="form-label">Status</label>
+                                <select class="form-select" id="createStatus">
+                                    {% for value, label in status_choices %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="createPriority" class="form-label">Priority</label>
+                                <select class="form-select" id="createPriority">
+                                    {% for value, label in priority_choices %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- Notes -->
+                            <div class="col-md-12">
+                                <label for="createNotes" class="form-label">Notes</label>
+                                <textarea class="form-control" id="createNotes" rows="2" style="resize: none;"></textarea>
+                            </div>
+
+                            <!-- Budget & File -->
+                            <div class="col-md-6">
+                                <label for="createBudget" class="form-label">Budget</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" step="0.01" class="form-control" id="createBudget">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="createFile" class="form-label">File Attachment</label>
+                                <input type="file" class="form-control" id="createFile">
+                            </div>
+
+                            <!-- Dates -->
+                            <div class="col-md-6">
+                                <label for="createStartDate" class="form-label">Start Date <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                                    <input type="date" class="form-control" id="createStartDate" required>
+                                    <div class="invalid-feedback">
+                                        Please select a start date.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="createEndDate" class="form-label">End Date <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                                    <input type="date" class="form-control" id="createEndDate" required>
+                                    <div class="invalid-feedback">
+                                        Please select an end date.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="createTaskSubmit">
+                        <i class="fas fa-plus-circle me-2"></i>Create Task
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="error-message" class="alert alert-danger mt-3" style="display: none;"></div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    const csrftoken = getCookie('csrftoken');
+
+    // Create Task functionality
+    document.getElementById('createTaskSubmit').addEventListener('click', function() {
+        const newTask = {
+            title: document.getElementById('createTitle').value.trim(),
+            description: document.getElementById('createDescription').value.trim(),
+            owner: document.getElementById('createOwner').value.trim(),
+            status: document.getElementById('createStatus').value,
+            priority: document.getElementById('createPriority').value,
+            notes: document.getElementById('createNotes').value.trim(),
+            budget: parseFloat(document.getElementById('createBudget').value) || null,
+            start_date: document.getElementById('createStartDate').value,
+            end_date: document.getElementById('createEndDate').value
+        };
+
+        // Basic validation
+        if (!newTask.title) {
+            document.getElementById('error-message').textContent = 'Title is required';
+            document.getElementById('error-message').style.display = 'block';
+            return;
+        }
+
+        if (!newTask.owner) {
+            document.getElementById('error-message').textContent = 'Owner email is required';
+            document.getElementById('error-message').style.display = 'block';
+            return;
+        }
+
+        if (!newTask.start_date || !newTask.end_date) {
+            document.getElementById('error-message').textContent = 'Both start and end dates are required';
+            document.getElementById('error-message').style.display = 'block';
+            return;
+        }
+
+        fetch('/new/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify(newTask)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                document.getElementById('error-message').textContent = data.error || 'Error creating task';
+                document.getElementById('error-message').style.display = 'block';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('error-message').textContent = error.message || 'Error creating task';
+            document.getElementById('error-message').style.display = 'block';
+        });
+    });
+
+    // Update existing task
+    document.querySelectorAll('.editable, .form-select, .date-input').forEach(element => {
+        element.addEventListener('change', function() {
+            const taskId = this.closest('tr').dataset.taskId;
+            const field = this.dataset.field;
+            const value = this.value || this.textContent;
+
+            fetch(`/tasks/${taskId}/edit/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({field: field, value: value})
+            });
+        });
+    });
+
+    // Delete task
+    document.querySelectorAll('.delete-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const taskId = this.closest('tr').dataset.taskId;
+            if (confirm('Are you sure you want to delete this task?')) {
+                fetch(`/${taskId}/delete/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        document.getElementById('error-message').textContent = data.error || 'Error deleting task';
+                        document.getElementById('error-message').style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('error-message').textContent = error.message || 'Error deleting task';
+                    document.getElementById('error-message').style.display = 'block';
+                });
+            }
+        });
+    });
+
+    // Get current sort state from template
+    const currentSort = "{{ current_sort }}";
+    const currentOrder = "{{ current_order }}";
+    
+    // Highlight active sort option
+    document.querySelectorAll('.sort-option').forEach(option => {
+        if (option.dataset.sort === currentSort) {
+            option.classList.add('active');
+        }
+    });
+    
+    // Set initial sort order button state
+    const sortOrderBtn = document.getElementById('sortOrderBtn');
+    if (currentOrder === 'asc') {
+        sortOrderBtn.innerHTML = '<i class="fas fa-sort-amount-down-alt"></i> Ascending';
+    } else {
+        sortOrderBtn.innerHTML = '<i class="fas fa-sort-amount-down"></i> Descending';
+    }
+
+    // Sort by column
+    document.querySelectorAll('.sort-option').forEach(option => {
+        option.addEventListener('click', function() {
+            const newSort = this.dataset.sort;
+            console.log("Sorting by:", newSort, "Order:", currentOrder);
+            applySorting(newSort, currentOrder);
+        });
+    });
+
+    // Toggle sort order
+    document.getElementById('sortOrderBtn').addEventListener('click', function() {
+        const newOrder = currentOrder === 'asc' ? 'desc' : 'asc';
+        console.log("Sorting by:", currentSort, "Order:", newOrder);
+        applySorting(currentSort, newOrder);
+    });
+
+    function applySorting(sortBy, sortOrder) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('sort_by', sortBy);
+        url.searchParams.set('sort_order', sortOrder);
+        console.log("New URL:", url.toString());
+        window.location.href = url.toString();
+    }
+});
+
+// Form validation
+(function () {
+    'use strict'
+    
+    // Fetch the form we want to apply custom Bootstrap validation styles to
+    const form = document.getElementById('createTaskForm')
+    
+    form.addEventListener('submit', function (event) {
+        if (!form.checkValidity()) {
+            event.preventDefault()
+            event.stopPropagation()
+        }
+        
+        form.classList.add('was-validated')
+    }, false)
+})()
+</script>
+
+<!-- Add Font Awesome for icons -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+<style>
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    .editable {
+        min-width: 120px;
+    }
+    .form-control, .form-select {
+        width: 100%;
+    }
+    .card {
+        border-radius: 0.5rem;
+    }
+    .card-header {
+        border-radius: 0.5rem 0.5rem 0 0;
+    }
+    .table th {
+        white-space: nowrap;
+    }
+    .table td {
+        vertical-align: middle;
+    }
+    .modal-content {
+        border-radius: 0.5rem;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    .modal-header {
+        border-radius: 0.5rem 0.5rem 0 0;
+    }
+    .form-control, .form-select {
+        border-radius: 0.25rem;
+    }
+    .input-group-text {
+        background-color: #f8f9fa;
+    }
+    .form-label {
+        font-weight: 500;
+        margin-bottom: 0.25rem;
+    }
+    .invalid-feedback {
+        font-size: 0.875em;
+    }
+    .btn-close-white {
+        filter: invert(1);
+    }
+    .sort-option.active {
+        background-color: #f8f9fa;
+        font-weight: 500;
+    }
+    #sortOrderBtn {
+        min-width: 120px;
+    }
+</style>
+{% endblock %} 
