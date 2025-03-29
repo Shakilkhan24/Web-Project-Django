@@ -3,11 +3,16 @@ from .models import Task
 from .forms import TaskForm
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
 import json
 import pandas as pd
 
 # Create your views here.
 
+def home(request):
+    return render(request, 'tasks/home.html')
+
+@login_required
 def task_list(request):
     # Get all tasks and convert to DataFrame
     tasks = Task.objects.all().values()
@@ -62,7 +67,34 @@ def task_list(request):
     }
     return render(request, 'tasks/task_list.html', context)
 
+@login_required
+def dashboard(request):
+    tasks = Task.objects.all()
+    not_started = tasks.filter(status='todo').count()
+    working = tasks.filter(status='in_progress').count()
+    stuck = tasks.filter(status='stuck').count()
+    done = tasks.filter(status='done').count()
+    
+    context = {
+        'not_started': not_started,
+        'working': working,
+        'stuck': stuck,
+        'done': done
+    }
+    return render(request, 'tasks/dashboard.html', context)
+
+@login_required
+def kanban(request):
+    tasks = Task.objects.all()
+    context = {
+        'tasks': tasks,
+        'status_choices': Task.STATUS_CHOICES,
+        'priority_choices': Task.PRIORITY_CHOICES
+    }
+    return render(request, 'tasks/kanban.html', context)
+
 @csrf_exempt
+@login_required
 def task_create(request):
     if request.method == "POST":
         try:
@@ -119,6 +151,7 @@ def task_create(request):
     }, status=405)
 
 @csrf_exempt
+@login_required
 def task_update(request, pk):
     if request.method == "POST":
         task = get_object_or_404(Task, pk=pk)
@@ -129,6 +162,7 @@ def task_update(request, pk):
     return JsonResponse({'success': False})
 
 @csrf_exempt
+@login_required
 def task_delete(request, pk):
     if request.method == "POST":
         try:
