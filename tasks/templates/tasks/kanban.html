@@ -3,6 +3,7 @@
 
 {% block content %}
 <div class="container-fluid mt-4">
+    <!-- Kanban Board Content -->
     <div class="card shadow">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
             <h3 class="card-title mb-0">
@@ -55,6 +56,9 @@
                                             </span>
                                         </div>
                                         <p class="card-text small text-muted mb-2">{{ task.description|truncatechars:100 }}</p>
+                                        {% if task.notes %}
+                                        <div class="task-notes">{{ task.notes }}</div>
+                                        {% endif %}
                                         <div class="d-flex justify-content-between align-items-center">
                                             <small class="text-muted">
                                                 <i class="fas fa-user me-1"></i>{{ task.owner }}
@@ -134,9 +138,9 @@
                         </div>
 
                         <!-- Notes -->
-                        <div class="col-md-12">
+                        <div class="col-12">
                             <label for="notes" class="form-label">Notes</label>
-                            <textarea class="form-control" id="notes" rows="2" style="resize: none;"></textarea>
+                            <textarea class="form-control notes-textarea" id="notes" style="width: 100%;"></textarea>
                         </div>
 
                         <!-- Budget & File -->
@@ -205,6 +209,55 @@
 
 .badge {
     font-weight: 500;
+}
+
+.task-notes {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-height: 150px;
+    overflow-y: auto;
+    background-color: #fff3cd;
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    margin-bottom: 10px;
+    border: 1px solid #ffeeba;
+}
+
+.notes-textarea {
+    min-height: 100px;
+    max-height: 300px;
+    resize: vertical;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    background-color: #fff3cd;
+    border: 1px solid #ffeeba;
+}
+
+.notes-textarea:focus {
+    background-color: #fffbf0;
+    border-color: #0d6efd;
+    outline: none;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.task-notes::-webkit-scrollbar {
+    width: 6px;
+}
+
+.task-notes::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.task-notes::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.task-notes::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
 }
 </style>
 
@@ -375,28 +428,33 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('createTaskBtn').addEventListener('click', function() {
         const form = document.getElementById('createTaskForm');
         if (form.checkValidity()) {
-            const formData = new FormData();
-            formData.append('title', document.getElementById('title').value);
-            formData.append('description', document.getElementById('description').value);
-            formData.append('owner', document.getElementById('owner').value);
-            formData.append('status', document.getElementById('status').value);
-            formData.append('priority', document.getElementById('priority').value);
-            formData.append('notes', document.getElementById('notes').value);
-            formData.append('budget', document.getElementById('budget').value || null);
-            formData.append('start_date', document.getElementById('start_date').value);
-            formData.append('end_date', document.getElementById('end_date').value);
+            const taskData = {
+                title: document.getElementById('title').value,
+                description: document.getElementById('description').value,
+                owner: document.getElementById('owner').value,
+                status: document.getElementById('status').value,
+                priority: document.getElementById('priority').value,
+                notes: document.getElementById('notes').value,
+                budget: document.getElementById('budget').value || null,
+                start_date: document.getElementById('start_date').value,
+                end_date: document.getElementById('end_date').value
+            };
 
+            // Handle file upload separately if needed
             const fileInput = document.getElementById('file');
             if (fileInput.files.length > 0) {
+                const formData = new FormData();
                 formData.append('file', fileInput.files[0]);
+                // You might want to handle file upload in a separate request
             }
 
             fetch('/tasks/new/', {
                 method: 'POST',
                 headers: {
+                    'Content-Type': 'application/json',
                     'X-CSRFToken': getCookie('csrftoken')
                 },
-                body: formData
+                body: JSON.stringify(taskData)
             })
             .then(response => response.json())
             .then(data => {
@@ -408,7 +466,7 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('Failed to create task');
+                alert('Failed to create task: ' + error);
             });
         }
         form.classList.add('was-validated');
