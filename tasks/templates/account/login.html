@@ -6,48 +6,82 @@
         <div class="col-md-6">
             <div class="card shadow">
                 <div class="card-header bg-primary text-white">
-                    <h3 class="mb-0">Sign In</h3>
+                    <h3 class="mb-0 text-center">
+                        <i class="fas fa-sign-in-alt me-2"></i>Sign In
+                    </h3>
                 </div>
                 <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
                     <form method="post" class="needs-validation" novalidate>
                         {% csrf_token %}
-                        {% if form.errors %}
-                            <div class="alert alert-danger">
-                                Please correct the errors below.
-                            </div>
-                        {% endif %}
+                        
                         <div class="mb-3">
-                            <label for="id_username" class="form-label">Username</label>
-                            <input type="text" name="username" id="id_username" class="form-control {% if form.username.errors %}is-invalid{% endif %}" required>
+                            <label for="{{ form.username.id_for_label }}" class="form-label">
+                                <i class="fas fa-user me-1"></i>Username
+                            </label>
+                            <input type="text" 
+                                   name="{{ form.username.name }}" 
+                                   id="{{ form.username.id_for_label }}" 
+                                   class="form-control {% if form.username.errors %}is-invalid{% endif %}" 
+                                   value="{{ form.username.value|default:'' }}"
+                                   required>
                             {% if form.username.errors %}
                                 <div class="invalid-feedback">
                                     {{ form.username.errors|join:", " }}
                                 </div>
                             {% endif %}
                         </div>
+
                         <div class="mb-3">
-                            <label for="id_password" class="form-label">Password</label>
-                            <input type="password" name="password" id="id_password" class="form-control {% if form.password.errors %}is-invalid{% endif %}" required>
+                            <label for="{{ form.password.id_for_label }}" class="form-label">
+                                <i class="fas fa-lock me-1"></i>Password
+                            </label>
+                            <input type="password" 
+                                   name="{{ form.password.name }}" 
+                                   id="{{ form.password.id_for_label }}" 
+                                   class="form-control {% if form.password.errors %}is-invalid{% endif %}" 
+                                   required>
                             {% if form.password.errors %}
                                 <div class="invalid-feedback">
                                     {{ form.password.errors|join:", " }}
                                 </div>
                             {% endif %}
                         </div>
+
                         <div class="d-grid">
-                            <button type="submit" class="btn btn-primary">
+                            <button type="submit" class="btn btn-primary btn-lg">
                                 <i class="fas fa-sign-in-alt me-2"></i>Sign In
                             </button>
                         </div>
                     </form>
+
+                    <div class="text-center mt-3">
+                        <small class="text-muted">
+                            Don't have an account? Contact your administrator.
+                        </small>
+                    </div>
                 </div>
+            </div>
+
+            <div class="text-center mt-3">
+                <a href="{% url 'home' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Home
+                </a>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-// Form validation
+// Bootstrap form validation
 (function () {
     'use strict'
     var forms = document.querySelectorAll('.needs-validation')
@@ -61,5 +95,38 @@
         }, false)
     })
 })()
+
+// Auto-dismiss alerts after 5 seconds
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+        var alerts = document.querySelectorAll('.alert');
+        alerts.forEach(function(alert) {
+            var bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        });
+    }, 5000);
+});
 </script>
+
+<style>
+.card {
+    border-radius: 0.5rem;
+    border: none;
+}
+.card-header {
+    border-radius: 0.5rem 0.5rem 0 0 !important;
+}
+.form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+.btn-primary {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+.btn-primary:hover {
+    background-color: #0b5ed7;
+    border-color: #0a58ca;
+}
+</style>
 {% endblock %}

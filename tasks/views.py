@@ -1,9 +1,12 @@
 from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib.auth import login, authenticate, logout
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import AuthenticationForm
+from django.contrib import messages
 from .models import Task
 from .forms import TaskForm
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth.decorators import login_required
 import json
 import pandas as pd
 
@@ -12,17 +15,70 @@ import pandas as pd
 def home(request):
     return render(request, 'tasks/home.html')
 
+def login_view(request):
+    """Custom login view with proper form handling"""
+    if request.user.is_authenticated:
+        return redirect('task_list')
+    
+    if request.method == 'POST':
+        form = AuthenticationForm(request, data=request.POST)
+        if form.is_valid():
+            username = form.cleaned_data.get('username')
+            password = form.cleaned_data.get('password')
+            user = authenticate(username=username, password=password)
+            if user is not None:
+                login(request, user)
+                messages.success(request, f'Welcome back, {username}!')
+                return redirect('task_list')
+        else:
+            messages.error(request, 'Invalid username or password.')
+    else:
+        form = AuthenticationForm()
+    
+    return render(request, 'account/login.html', {'form': form})
+
+def logout_view(request):
+    """Custom logout view that handles both GET and POST requests"""
+    if request.method == 'POST':
+        # Handle logout form submission
+        logout(request)
+        messages.success(request, 'You have been successfully logged out.')
+        return redirect('home')
+    else:
+        # Show logout confirmation page for GET requests
+        if request.user.is_authenticated:
+            return render(request, 'account/logout.html')
+        else:
+            # If user is not authenticated, redirect to login
+            return redirect('login')
+
 @login_required
 def task_list(request):
-    # Get all tasks and convert to DataFrame
-    tasks = Task.objects.all().values()
-    df = pd.DataFrame.from_records(tasks)
+    # Get all tasks
+    tasks_queryset = Task.objects.all()
     
     # Get sorting parameters from request
     sort_by = request.GET.get('sort_by', 'id')
     sort_order = request.GET.get('sort_order', 'asc')
     
     print(f"Sorting by: {sort_by}, Order: {sort_order}")
+    
+    # Convert queryset to list for pandas processing
+    tasks = list(tasks_queryset.values())
+    
+    if not tasks:
+        # If no tasks exist, return empty context
+        context = {
+            'tasks': [],
+            'status_choices': Task.STATUS_CHOICES,
+            'priority_choices': Task.PRIORITY_CHOICES,
+            'current_sort': sort_by,
+            'current_order': sort_order
+        }
+        return render(request, 'tasks/task_list.html', context)
+    
+    # Create DataFrame
+    df = pd.DataFrame(tasks)
     
     # Validate sort_by parameter
     valid_columns = ['id', 'title', 'status', 'priority', 'budget', 'start_date', 'end_date']
@@ -70,8 +126,9 @@ def task_list(request):
 @login_required
 def dashboard(request):
     tasks = Task.objects.all()
-    not_started = tasks.filter(status='todo').count()
-    working = tasks.filter(status='in_progress').count()
+    # Fix the status choices to match the model
+    not_started = tasks.filter(status='not_started').count()
+    working = tasks.filter(status='working').count()
     stuck = tasks.filter(status='stuck').count()
     done = tasks.filter(status='done').count()
     
@@ -154,12 +211,26 @@ def task_create(request):
 @login_required
 def task_update(request, pk):
     if request.method == "POST":
-        task = get_object_or_404(Task, pk=pk)
-        data = json.loads(request.body)
-        setattr(task, data['field'], data['value'])
-        task.save()
-        return JsonResponse({'success': True})
-    return JsonResponse({'success': False})
+        try:
+            task = get_object_or_404(Task, pk=pk)
+            data = json.loads(request.body)
+            field = data.get('field')
+            value = data.get('value')
+            
+            if not field:
+                return JsonResponse({'success': False, 'error': 'Field is required'})
+            
+            # Validate field exists on model
+            if not hasattr(task, field):
+                return JsonResponse({'success': False, 'error': f'Invalid field: {field}'})
+            
+            setattr(task, field, value)
+            task.save()
+            return JsonResponse({'success': True})
+        except Exception as e:
+            print(f"Error updating task: {str(e)}")
+            return JsonResponse({'success': False, 'error': str(e)})
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
 @csrf_exempt
 @login_required
@@ -170,6 +241,7 @@ def task_delete(request, pk):
             task.delete()
             return JsonResponse({'success': True})
         except Exception as e:
+            print(f"Error deleting task: {str(e)}")
             return JsonResponse({
                 'success': False,
                 'error': str(e),
