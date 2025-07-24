@@ -8,7 +8,6 @@ from .forms import TaskForm
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
-import pandas as pd
 
 # Create your views here.
 
@@ -54,34 +53,17 @@ def logout_view(request):
 
 @login_required
 def task_list(request):
-    # Get all tasks
-    tasks_queryset = Task.objects.all()
-    
     # Get sorting parameters from request
     sort_by = request.GET.get('sort_by', 'id')
     sort_order = request.GET.get('sort_order', 'asc')
     
     print(f"Sorting by: {sort_by}, Order: {sort_order}")
     
-    # Convert queryset to list for pandas processing
-    tasks = list(tasks_queryset.values())
-    
-    if not tasks:
-        # If no tasks exist, return empty context
-        context = {
-            'tasks': [],
-            'status_choices': Task.STATUS_CHOICES,
-            'priority_choices': Task.PRIORITY_CHOICES,
-            'current_sort': sort_by,
-            'current_order': sort_order
-        }
-        return render(request, 'tasks/task_list.html', context)
-    
-    # Create DataFrame
-    df = pd.DataFrame(tasks)
+    # Start with all tasks queryset
+    tasks_queryset = Task.objects.all()
     
     # Validate sort_by parameter
-    valid_columns = ['id', 'title', 'status', 'priority', 'budget', 'start_date', 'end_date']
+    valid_columns = ['id', 'title', 'status', 'priority', 'budget', 'start_date', 'end_date', 'last_updated']
     if sort_by not in valid_columns:
         print(f"Invalid sort_by: {sort_by}, defaulting to 'id'")
         sort_by = 'id'
@@ -93,32 +75,54 @@ def task_list(request):
     
     # Handle special cases for sorting
     if sort_by == 'status':
-        # Map status choices to their order for proper sorting
-        status_order = {status[0]: idx for idx, status in enumerate(Task.STATUS_CHOICES)}
-        df['status_order'] = df['status'].map(status_order)
-        sort_by = 'status_order'
+        # Create a custom ordering for status
+        status_order = []
+        for status_choice in Task.STATUS_CHOICES:
+            status_order.append(status_choice[0])
+        
+        # Use Django's order_by with Case/When for custom ordering
+        from django.db.models import Case, When, IntegerField
+        status_ordering = Case(
+            *[When(status=status, then=idx) for idx, status in enumerate(status_order)],
+            output_field=IntegerField()
+        )
+        
+        if sort_order == 'asc':
+            tasks_queryset = tasks_queryset.annotate(status_order=status_ordering).order_by('status_order')
+        else:
+            tasks_queryset = tasks_queryset.annotate(status_order=status_ordering).order_by('-status_order')
+            
     elif sort_by == 'priority':
-        # Map priority choices to their order for proper sorting
-        priority_order = {priority[0]: idx for idx, priority in enumerate(Task.PRIORITY_CHOICES)}
-        df['priority_order'] = df['priority'].map(priority_order)
-        sort_by = 'priority_order'
+        # Create a custom ordering for priority
+        priority_order = []
+        for priority_choice in Task.PRIORITY_CHOICES:
+            priority_order.append(priority_choice[0])
+        
+        from django.db.models import Case, When, IntegerField
+        priority_ordering = Case(
+            *[When(priority=priority, then=idx) for idx, priority in enumerate(priority_order)],
+            output_field=IntegerField()
+        )
+        
+        if sort_order == 'asc':
+            tasks_queryset = tasks_queryset.annotate(priority_order=priority_ordering).order_by('priority_order')
+        else:
+            tasks_queryset = tasks_queryset.annotate(priority_order=priority_ordering).order_by('-priority_order')
+    else:
+        # For other fields, use standard Django ordering
+        order_field = sort_by if sort_order == 'asc' else f'-{sort_by}'
+        tasks_queryset = tasks_queryset.order_by(order_field)
     
-    # Apply sorting
-    try:
-        df = df.sort_values(by=sort_by, ascending=(sort_order == 'asc'))
-        print("Sorting successful")
-    except Exception as e:
-        print(f"Sorting error: {str(e)}")
-        df = df.sort_values(by='id', ascending=True)
+    # Convert to list for template
+    tasks = list(tasks_queryset.values())
     
-    # Convert back to list of dictionaries
-    sorted_tasks = df.to_dict('records')
+    print(f"Found {len(tasks)} tasks after sorting")
     
     context = {
-        'tasks': sorted_tasks,
+        'tasks': tasks,
         'status_choices': Task.STATUS_CHOICES,
         'priority_choices': Task.PRIORITY_CHOICES,
-        'current_sort': sort_by.replace('_order', ''),  # Remove the _order suffix
+        'current_sort': sort_by,
         'current_order': sort_order
     }
     return render(request, 'tasks/task_list.html', context)
