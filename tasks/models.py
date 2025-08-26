@@ -19,6 +19,7 @@ class Task(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField()
     owner = models.EmailField()  # Assign tasks via email
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_tasks')  # Link task to user
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='not_started')
     priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium')
     notes = models.TextField(blank=True, null=True)
@@ -29,4 +30,7 @@ class Task(models.Model):
     last_updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.title
+        return f"{self.title} - {self.user.username}"
+
+    class Meta:
+        ordering = ['-last_updated']

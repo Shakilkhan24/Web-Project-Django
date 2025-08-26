@@ -59,8 +59,8 @@ def task_list(request):
     
     print(f"Sorting by: {sort_by}, Order: {sort_order}")
     
-    # Start with all tasks queryset
-    tasks_queryset = Task.objects.all()
+    # Filter tasks by current user only
+    tasks_queryset = Task.objects.filter(user=request.user)
     
     # Validate sort_by parameter
     valid_columns = ['id', 'title', 'status', 'priority', 'budget', 'start_date', 'end_date', 'last_updated']
@@ -116,7 +116,7 @@ def task_list(request):
     # Convert to list for template
     tasks = list(tasks_queryset.values())
     
-    print(f"Found {len(tasks)} tasks after sorting")
+    print(f"Found {len(tasks)} tasks for user {request.user.username} after sorting")
     
     context = {
         'tasks': tasks,
@@ -129,24 +129,37 @@ def task_list(request):
 
 @login_required
 def dashboard(request):
-    tasks = Task.objects.all()
+    # Filter tasks by current user only
+    tasks = Task.objects.filter(user=request.user)
+    
     # Fix the status choices to match the model
     not_started = tasks.filter(status='not_started').count()
     working = tasks.filter(status='working').count()
     stuck = tasks.filter(status='stuck').count()
     done = tasks.filter(status='done').count()
     
+    # Additional user-specific stats
+    total_tasks = tasks.count()
+    high_priority_tasks = tasks.filter(priority='high').count()
+    critical_priority_tasks = tasks.filter(priority='critical').count()
+    
     context = {
         'not_started': not_started,
         'working': working,
         'stuck': stuck,
-        'done': done
+        'done': done,
+        'total_tasks': total_tasks,
+        'high_priority_tasks': high_priority_tasks,
+        'critical_priority_tasks': critical_priority_tasks,
+        'user': request.user
     }
     return render(request, 'tasks/dashboard.html', context)
 
 @login_required
 def kanban(request):
-    tasks = Task.objects.all()
+    # Filter tasks by current user only
+    tasks = Task.objects.filter(user=request.user)
+    
     context = {
         'tasks': tasks,
         'status_choices': Task.STATUS_CHOICES,
@@ -178,10 +191,12 @@ def task_create(request):
                         'error': f'Missing or empty field: {field}'
                     }, status=400)
             
+            # Create task with current user
             task = Task.objects.create(
                 title=data['title'],
                 description=data.get('description', ''),
                 owner=data['owner'],
+                user=request.user,  # Associate task with current user
                 status=data['status'],
                 priority=data['priority'],
                 notes=data.get('notes', ''),
@@ -192,7 +207,7 @@ def task_create(request):
             return JsonResponse({
                 'success': True,
                 'id': task.id,
-                'message': 'Task created successfully'
+                'message': f'Task created successfully for {request.user.username}'
             })
         except json.JSONDecodeError:
             return JsonResponse({
@@ -216,7 +231,8 @@ def task_create(request):
 def task_update(request, pk):
     if request.method == "POST":
         try:
-            task = get_object_or_404(Task, pk=pk)
+            # Ensure user can only update their own tasks
+            task = get_object_or_404(Task, pk=pk, user=request.user)
             data = json.loads(request.body)
             field = data.get('field')
             value = data.get('value')
@@ -224,13 +240,15 @@ def task_update(request, pk):
             if not field:
                 return JsonResponse({'success': False, 'error': 'Field is required'})
             
-            # Validate field exists on model
-            if not hasattr(task, field):
+            # Validate field exists on model and is not the user field
+            if not hasattr(task, field) or field == 'user':
                 return JsonResponse({'success': False, 'error': f'Invalid field: {field}'})
             
             setattr(task, field, value)
             task.save()
             return JsonResponse({'success': True})
+        except Task.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Task not found or access denied'}, status=404)
         except Exception as e:
             print(f"Error updating task: {str(e)}")
             return JsonResponse({'success': False, 'error': str(e)})
@@ -241,9 +259,12 @@ def task_update(request, pk):
 def task_delete(request, pk):
     if request.method == "POST":
         try:
-            task = get_object_or_404(Task, pk=pk)
+            # Ensure user can only delete their own tasks
+            task = get_object_or_404(Task, pk=pk, user=request.user)
             task.delete()
             return JsonResponse({'success': True})
+        except Task.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Task not found or access denied'}, status=404)
         except Exception as e:
             print(f"Error deleting task: {str(e)}")
             return JsonResponse({
