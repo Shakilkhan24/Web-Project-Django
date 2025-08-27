@@ -85,6 +85,87 @@
         </div>
     </div>
 
+   <!-- CSV Export/Import Section -->
+<div class="card shadow mt-4">
+    <div class="card-body">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="d-flex gap-3">
+                    <!-- Export Button -->
+                    <button type="button" class="btn btn-outline-primary flex-fill" onclick="exportTasks()">
+                        <div class="d-flex align-items-center justify-content-center">
+                            <i class="fas fa-download fa-lg me-2"></i>
+                            <div class="text-start">
+                                <div class="fw-bold">Export Tasks</div>
+                                <small class="text-muted">CSV file</small>
+                            </div>
+                        </div>
+                    </button>
+                    
+                    <!-- Import Button -->
+                    <button type="button" class="btn btn-outline-primary flex-fill" data-bs-toggle="modal" data-bs-target="#importCsvModal">
+                        <div class="d-flex align-items-center justify-content-center">
+                            <i class="fas fa-upload fa-lg me-2"></i>
+                            <div class="text-start">
+                                <div class="fw-bold">Import Tasks</div>
+                                <small class="text-muted">From CSV</small>
+                            </div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import CSV Modal -->
+<div class="modal fade" id="importCsvModal" tabindex="-1" aria-labelledby="importCsvModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <!-- Consistent primary color -->
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="importCsvModalLabel">
+                    <i class="fas fa-upload me-2"></i>Import Tasks from CSV
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle me-2"></i>CSV Format Requirements:</h6>
+                    <ul class="mb-0">
+                        <li>File must be in CSV format</li>
+                        <li>Required columns: Title, Description, Owner, Status, Priority, Notes, Budget, Start Date, End Date</li>
+                        <li>Dates should be in YYYY-MM-DD format</li>
+                        <li>Budget should be a number (optional)</li>
+                        <li>Status options: not_started, working, stuck, done</li>
+                        <li>Priority options: critical, high, medium, low</li>
+                    </ul>
+                </div>
+                
+                <form method="post" action="{% url 'import_tasks_csv' %}" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="csvFile" class="form-label">Select CSV File</label>
+                        <input type="file" class="form-control" id="csvFile" name="csv_file" accept=".csv" required>
+                        <div class="form-text">Choose a CSV file to import your tasks.</div>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-upload me-2"></i>Import Tasks
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
     <!-- Create Task Modal -->
     <div class="modal fade" id="createTaskModal" tabindex="-1" aria-labelledby="createTaskModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
@@ -416,6 +497,11 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     });
+
+    // Add CSV export function
+    window.exportTasks = function() {
+        window.location.href = "{% url 'export_tasks_csv' %}";
+    };
 });
 
 // Form validation
@@ -547,6 +633,39 @@ document.addEventListener('DOMContentLoaded', function() {
         resize: vertical;
         font-size: 0.875rem;
         line-height: 1.5;
+    }
+
+    /* CSV Export/Import Section Styling */
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    }
+    
+    .btn-outline-success:hover {
+        background-color: #198754;
+        border-color: #198754;
+        color: white;
+    }
+    
+    .btn-outline-primary:hover {
+        background-color: #0d6efd;
+        border-color: #0d6efd;
+        color: white;
+    }
+    
+    .btn-lg {
+        padding: 1rem 1.5rem;
+        font-size: 1.1rem;
+        border-radius: 0.5rem;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-lg:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    
+    .fa-2x {
+        font-size: 2em;
     }
 </style>
 {% endblock %} 

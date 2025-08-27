@@ -5,9 +5,13 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.contrib import messages
 from .models import Task
 from .forms import TaskForm
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
+import csv
+from io import StringIO
+from datetime import datetime
+from django.core.exceptions import ValidationError
 
 # Create your views here.
 
@@ -276,3 +280,137 @@ def task_delete(request, pk):
         'success': False,
         'error': 'Invalid request method'
     }, status=405)
+
+@login_required
+def export_tasks_csv(request):
+    """Export user's tasks to CSV format"""
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="tasks_{request.user.username}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv"'
+    
+    writer = csv.writer(response)
+    
+    # Write header
+    writer.writerow([
+        'Title', 'Description', 'Owner', 'Status', 'Priority', 
+        'Notes', 'Budget', 'Start Date', 'End Date', 'Last Updated'
+    ])
+    
+    # Get user's tasks
+    tasks = Task.objects.filter(user=request.user)
+    
+    # Write data rows
+    for task in tasks:
+        writer.writerow([
+            task.title,
+            task.description,
+            task.owner,
+            task.status,
+            task.priority,
+            task.notes or '',
+            task.budget or '',
+            task.start_date.strftime('%Y-%m-%d'),
+            task.end_date.strftime('%Y-%m-%d'),
+            task.last_updated.strftime('%Y-%m-%d %H:%M:%S')
+        ])
+    
+    return response
+
+@login_required
+def import_tasks_csv(request):
+    """Import tasks from CSV file"""
+    if request.method == 'POST':
+        if 'csv_file' not in request.FILES:
+            messages.error(request, 'Please select a CSV file to import.')
+            return redirect('task_list')
+        
+        csv_file = request.FILES['csv_file']
+        
+        # Check file extension
+        if not csv_file.name.endswith('.csv'):
+            messages.error(request, 'Please upload a valid CSV file.')
+            return redirect('task_list')
+        
+        try:
+            # Read CSV file
+            decoded_file = csv_file.read().decode('utf-8')
+            csv_data = csv.reader(StringIO(decoded_file))
+            
+            # Skip header row
+            next(csv_data, None)
+            
+            imported_count = 0
+            error_count = 0
+            
+            for row in csv_data:
+                if len(row) >= 9:  # Ensure we have enough columns
+                    try:
+                        # Parse the row data
+                        title = row[0].strip()
+                        description = row[1].strip()
+                        owner = row[2].strip()
+                        status = row[3].strip()
+                        priority = row[4].strip()
+                        notes = row[5].strip()
+                        budget_str = row[6].strip()
+                        start_date_str = row[7].strip()
+                        end_date_str = row[8].strip()
+                        
+                        # Validate required fields
+                        if not title or not owner or not start_date_str or not end_date_str:
+                            error_count += 1
+                            continue
+                        
+                        # Parse budget
+                        budget = None
+                        if budget_str:
+                            try:
+                                budget = float(budget_str)
+                            except ValueError:
+                                budget = None
+                        
+                        # Parse dates
+                        try:
+                            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+                            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+                        except ValueError:
+                            error_count += 1
+                            continue
+                        
+                        # Validate status and priority
+                        valid_statuses = [choice[0] for choice in Task.STATUS_CHOICES]
+                        valid_priorities = [choice[0] for choice in Task.PRIORITY_CHOICES]
+                        
+                        if status not in valid_statuses:
+                            status = 'not_started'
+                        if priority not in valid_priorities:
+                            priority = 'medium'
+                        
+                        # Create task
+                        Task.objects.create(
+                            title=title,
+                            description=description,
+                            owner=owner,
+                            user=request.user,
+                            status=status,
+                            priority=priority,
+                            notes=notes if notes else None,
+                            budget=budget,
+                            start_date=start_date,
+                            end_date=end_date
+                        )
+                        
+                        imported_count += 1
+                        
+                    except Exception as e:
+                        error_count += 1
+                        continue
+            
+            if imported_count > 0:
+                messages.success(request, f'Successfully imported {imported_count} tasks.')
+            if error_count > 0:
+                messages.warning(request, f'Failed to import {error_count} tasks due to invalid data.')
+            
+        except Exception as e:
+            messages.error(request, f'Error processing CSV file: {str(e)}')
+    
+    return redirect('task_list')

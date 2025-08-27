@@ -8,6 +8,8 @@ urlpatterns = [
     path('tasks/<int:pk>/edit/', views.task_update, name='task_update'),
     path('tasks/<int:pk>/update/', views.task_update, name='task_update_alt'),  # Alternative URL for updates
     path('tasks/<int:pk>/delete/', views.task_delete, name='task_delete'),
+    path('tasks/export-csv/', views.export_tasks_csv, name='export_tasks_csv'),
+    path('tasks/import-csv/', views.import_tasks_csv, name='import_tasks_csv'),
     path('kanban/', views.kanban, name='kanban'),
     path('dashboard/', views.dashboard, name='dashboard'),
 ]
