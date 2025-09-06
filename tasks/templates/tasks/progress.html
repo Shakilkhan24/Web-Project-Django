@@ -226,7 +226,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Task is overdue
             percentile = 100;
             const daysOverdue = Math.ceil((today - endDate) / (1000 * 60 * 60 * 24));
-            timeRemainingText = `${daysOverdue} days overdue`;
+            timeRemainingText = `${daysOverdue} days exceeded`;
             progressText = '100% done';
         } else {
             // Task is in progress
