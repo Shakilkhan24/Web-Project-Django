@@ -13,13 +13,12 @@ from io import StringIO
 from datetime import datetime
 from django.core.exceptions import ValidationError
 
-# Create your views here.
 
 def home(request):
     return render(request, 'tasks/home.html')
 
 def login_view(request):
-    """Custom login view with proper form handling"""
+    
     if request.user.is_authenticated:
         return redirect('task_list')
     
@@ -91,19 +90,16 @@ def task_list(request):
 
 @login_required
 def dashboard(request):
-    # Filter tasks by current user only
+    # Filter user specific tasks 
     tasks = Task.objects.filter(user=request.user)
     
-    # Fix the status choices to match the model
+    # count tasks based on status 
     not_started = tasks.filter(status='not_started').count()
     working = tasks.filter(status='working').count()
     stuck = tasks.filter(status='stuck').count()
     done = tasks.filter(status='done').count()
-    
-    # Additional user-specific stats
+    # total count 
     total_tasks = tasks.count()
-    high_priority_tasks = tasks.filter(priority='high').count()
-    critical_priority_tasks = tasks.filter(priority='critical').count()
     
     context = {
         'not_started': not_started,
@@ -111,8 +107,6 @@ def dashboard(request):
         'stuck': stuck,
         'done': done,
         'total_tasks': total_tasks,
-        'high_priority_tasks': high_priority_tasks,
-        'critical_priority_tasks': critical_priority_tasks,
         'user': request.user
     }
     return render(request, 'tasks/dashboard.html', context)
