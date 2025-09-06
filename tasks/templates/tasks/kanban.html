@@ -1,67 +1,60 @@
 {% extends "base.html" %}
-{% load task_filters %}
 
 {% block content %}
 <div class="container-fluid mt-4">
-    <!-- Kanban Board Content -->
     <div class="card shadow">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <div class="card-header bg-primary text-white">
             <h3 class="card-title mb-0">
-                <i class="fas fa-columns me-2"></i>Kanban Board
+                <i class="fas fa-chart-bar me-2"></i>Task Duration Analysis
             </h3>
-            <div>
-                <div class="btn-group me-2">
-                    <button type="button" class="btn btn-light" id="sortOrderBtn" data-order="asc">
-                        <i class="fas fa-sort-amount-down-alt"></i> Ascending
-                    </button>
-                </div>
-                <button type="button" class="btn btn-light ms-2" data-bs-toggle="modal" data-bs-target="#createTaskModal">
-                    <i class="fas fa-plus"></i> Create Task
-                </button>
-            </div>
         </div>
-        <div class="card-body p-3">
+        <div class="card-body p-4">
             <div class="row g-4">
-                {% for status in status_choices %}
+                {% for status_code, data in status_data.items %}
                 <div class="col-12 col-md-6 col-lg-3">
                     <div class="card h-100 shadow-sm">
-                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">{{ status.1 }}</h5>
-                            <span class="badge bg-primary" id="count-{{ status.0 }}">
-                                {% with count=tasks|filter_by_status:status.0|length %}
-                                    {{ count }}
-                                {% endwith %}
-                            </span>
+                        <div class="card-header d-flex justify-content-between align-items-center status-header-{{ status_code }}">
+                            <h5 class="mb-0 text-white">{{ data.name }}</h5>
+                            <span class="badge bg-light text-dark">{{ data.count }}</span>
                         </div>
-                        <div class="card-body p-2">
-                            <div class="kanban-column" data-status="{{ status.0 }}" style="min-height: 200px;">
-                                {% for task in tasks %}
-                                {% if task.status == status.0 %}
-                                <div class="card mb-2 task-card" data-task-id="{{ task.id }}" draggable="true">
-                                    <div class="card-body p-3">
-                                        <div class="d-flex justify-content-between align-items-start mb-2">
-                                            <h6 class="card-title text-truncate mb-0">{{ task.title }}</h6>
-                                            <span class="badge {% if task.priority == 'critical' %}bg-danger{% elif task.priority == 'high' %}bg-warning text-dark{% elif task.priority == 'medium' %}bg-info{% else %}bg-secondary{% endif %}">
-                                                {{ task.get_priority_display }}
-                                            </span>
+                        <div class="card-body p-3">
+                            {% if data.tasks %}
+                                <div class="duration-chart">
+                                    {% for task in data.tasks %}
+                                    <div class="task-bar mb-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <small class="text-truncate me-2 task-title task-title-{{ forloop.counter0|add:1 }}" title="{{ task.title }}">{{ task.title|truncatechars:20 }}</small>
                                         </div>
-                                        <p class="card-text small text-muted mb-2">{{ task.description|truncatechars:100 }}</p>
-                                        {% if task.notes %}
-                                        <div class="task-notes">{{ task.notes }}</div>
-                                        {% endif %}
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <small class="text-muted">
-                                                <i class="fas fa-user me-1"></i>{{ task.owner }}
-                                            </small>
-                                            <small class="text-muted">
-                                                <i class="fas fa-calendar me-1"></i>{{ task.end_date|date:"M d" }}
-                                            </small>
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <small class="text-muted">Total days:</small>
+                                            <small class="text-muted fw-bold">{{ task.duration }} days</small>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <small class="text-muted">Time remaining:</small>
+                                            <small class="text-muted fw-bold time-remaining-display">Calculating...</small>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <small class="text-muted">Progress:</small>
+                                            <small class="text-muted fw-bold progress-display">Calculating...</small>
+                                        </div>
+                                        <div class="progress" style="height: 12px;">
+                                            <div class="progress-bar" 
+                                                 role="progressbar" 
+                                                 data-duration="{{ task.duration }}"
+                                                 data-start-date="{{ task.start_date }}"
+                                                 data-end-date="{{ task.end_date }}"
+                                                 title="{{ task.title }} - {{ task.duration }} days">
+                                            </div>
                                         </div>
                                     </div>
+                                    {% endfor %}
                                 </div>
-                                {% endif %}
-                                {% endfor %}
-                            </div>
+                            {% else %}
+                                <div class="text-center text-muted py-4">
+                                    <i class="fas fa-inbox fa-2x mb-2"></i>
+                                    <p class="mb-0">No tasks in this status</p>
+                                </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -71,356 +64,207 @@
     </div>
 </div>
 
-<!-- Create Task Modal -->
-<div class="modal fade" id="createTaskModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">Create New Task</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <form id="createTaskForm" class="needs-validation" novalidate>
-                    <div class="row g-3">
-                        <!-- Title -->
-                        <div class="col-md-12">
-                            <label for="title" class="form-label">Title <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control form-control-lg" id="title" required>
-                            <div class="invalid-feedback">
-                                Please enter a task title.
-                            </div>
-                        </div>
-
-                        <!-- Description -->
-                        <div class="col-md-12">
-                            <label for="description" class="form-label">Description</label>
-                            <textarea class="form-control" id="description" rows="3" style="resize: none;"></textarea>
-                        </div>
-
-                        <!-- Owner -->
-                        <div class="col-md-6">
-                            <label for="owner" class="form-label">Owner Email <span class="text-danger">*</span></label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="fas fa-envelope"></i></span>
-                                <input type="email" class="form-control" id="owner" required>
-                                <div class="invalid-feedback">
-                                    Please enter a valid email address.
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Status & Priority -->
-                        <div class="col-md-6">
-                            <label for="status" class="form-label">Status</label>
-                            <select class="form-select" id="status">
-                                {% for value, label in status_choices %}
-                                <option value="{{ value }}" {% if value == 'not_started' %}selected{% endif %}>{{ label }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="priority" class="form-label">Priority</label>
-                            <select class="form-select" id="priority" required>
-                                {% for value, label in priority_choices %}
-                                <option value="{{ value }}">{{ label }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-
-                        <!-- Notes -->
-                        <div class="col-12">
-                            <label for="notes" class="form-label">Notes</label>
-                            <textarea class="form-control notes-textarea" id="notes" style="width: 100%;"></textarea>
-                        </div>
-
-                        <!-- Budget -->
-                        <div class="col-md-6">
-                            <label for="budget" class="form-label">Budget</label>
-                            <div class="input-group">
-                                <span class="input-group-text">$</span>
-                                <input type="number" step="0.01" class="form-control" id="budget">
-                            </div>
-                        </div>
-
-                        <!-- Dates -->
-                        <div class="col-md-6">
-                            <label for="start_date" class="form-label">Start Date <span class="text-danger">*</span></label>
-                            <input type="date" class="form-control" id="start_date" required>
-                            <div class="invalid-feedback">
-                                Please select a start date.
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="end_date" class="form-label">End Date <span class="text-danger">*</span></label>
-                            <input type="date" class="form-control" id="end_date" required>
-                            <div class="invalid-feedback">
-                                Please select an end date.
-                            </div>
-                        </div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="createTaskBtn">Create Task</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <style>
-.kanban-column {
-    min-height: 100px;
-    padding: 8px;
-    border-radius: 4px;
-    background-color: #f8f9fa;
+.duration-chart {
+    max-height: 400px;
+    overflow-y: auto;
 }
 
-.task-card {
-    cursor: grab;
-    transition: transform 0.2s, box-shadow 0.2s;
-    border: none;
-    box-shadow: 0 2px 4px rgba(0,0,0,.05);
+.task-bar {
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 8px;
 }
 
-.task-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+.task-bar:last-child {
+    border-bottom: none;
 }
 
-.task-card.dragging {
-    opacity: 0.5;
-    cursor: grabbing;
+.progress {
+    background-color: #e9ecef;
+    border-radius: 6px;
+}
+
+.progress-bar {
+    transition: width 0.3s ease;
+    border-radius: 6px;
+}
+
+/* Color variations for different completion statuses */
+.progress-bar.not-started {
+    background-color: #6c757d;
+}
+
+.progress-bar.just-started {
+    background-color: #dc3545;
+}
+
+.progress-bar.in-progress {
+    background-color: #fd7e14;
+}
+
+.progress-bar.almost-done {
+    background-color: #ffc107;
+}
+
+.progress-bar.nearly-complete {
+    background-color: #20c997;
+}
+
+.progress-bar.completed {
+    background-color: #198754;
 }
 
 .badge {
     font-weight: 500;
 }
 
-.task-notes {
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    max-height: 150px;
-    overflow-y: auto;
-    background-color: #fff3cd;
-    padding: 8px;
-    border-radius: 4px;
-    font-size: 0.875rem;
-    line-height: 1.5;
-    margin-bottom: 10px;
-    border: 1px solid #ffeeba;
+/* Status header colors */
+.status-header-not_started {
+    background-color: #6c757d;
 }
 
-.notes-textarea {
-    min-height: 100px;
-    max-height: 300px;
-    resize: vertical;
-    font-size: 0.875rem;
-    line-height: 1.5;
-    background-color: #fff3cd;
-    border: 1px solid #ffeeba;
+.status-header-working {
+    background-color: #0d6efd;
 }
 
-.notes-textarea:focus {
-    background-color: #fffbf0;
-    border-color: #0d6efd;
-    outline: none;
-    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+.status-header-stuck {
+    background-color: #dc3545;
 }
 
-.task-notes::-webkit-scrollbar {
+.status-header-done {
+    background-color: #198754;
+}
+
+/* Task title colors - cycling through 4 colors */
+.task-title-1 {
+    color: #e74c3c;
+    font-weight: 600;
+}
+
+.task-title-2 {
+    color: #3498db;
+    font-weight: 600;
+}
+
+.task-title-3 {
+    color: #f39c12;
+    font-weight: 600;
+}
+
+.task-title-4 {
+    color: #9b59b6;
+    font-weight: 600;
+}
+
+.task-title-5 {
+    color: #e74c3c;
+    font-weight: 600;
+}
+
+.task-title-6 {
+    color: #3498db;
+    font-weight: 600;
+}
+
+.task-title-7 {
+    color: #f39c12;
+    font-weight: 600;
+}
+
+.task-title-8 {
+    color: #9b59b6;
+    font-weight: 600;
+}
+
+/* Custom scrollbar for duration chart */
+.duration-chart::-webkit-scrollbar {
     width: 6px;
 }
 
-.task-notes::-webkit-scrollbar-track {
+.duration-chart::-webkit-scrollbar-track {
     background: #f1f1f1;
     border-radius: 3px;
 }
 
-.task-notes::-webkit-scrollbar-thumb {
+.duration-chart::-webkit-scrollbar-thumb {
     background: #c1c1c1;
     border-radius: 3px;
 }
 
-.task-notes::-webkit-scrollbar-thumb:hover {
+.duration-chart::-webkit-scrollbar-thumb:hover {
     background: #a8a8a8;
 }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const taskCards = document.querySelectorAll('.task-card');
-    const columns = document.querySelectorAll('.kanban-column');
-    let draggingCard = null;
-
-    // Sort order toggle functionality
-    document.getElementById('sortOrderBtn').addEventListener('click', function() {
-        const currentOrder = this.dataset.order;
-        const newOrder = currentOrder === 'asc' ? 'desc' : 'asc';
-        this.dataset.order = newOrder;
-        this.innerHTML = `<i class="fas fa-sort-amount-${newOrder === 'asc' ? 'down-alt' : 'up-alt'}"></i> ${newOrder === 'asc' ? 'Ascending' : 'Descending'}`;
+    // Set progress bar widths, colors, and calculate time remaining
+    const progressBars = document.querySelectorAll('.progress-bar[data-duration]');
+    
+    progressBars.forEach(function(bar, index) {
+        const duration = parseInt(bar.getAttribute('data-duration'));
+        const startDate = new Date(bar.getAttribute('data-start-date'));
+        const endDate = new Date(bar.getAttribute('data-end-date'));
+        const today = new Date();
         
-        // Sort tasks by last updated date
-        sortTasksByDate(newOrder);
-    });
-
-    function sortTasksByDate(sortOrder) {
-        columns.forEach(column => {
-            const cards = Array.from(column.querySelectorAll('.task-card'));
-            cards.sort((a, b) => {
-                // Since we don't have last_updated in the DOM, we'll sort by title as a fallback
-                const aValue = a.querySelector('.card-title').textContent.trim();
-                const bValue = b.querySelector('.card-title').textContent.trim();
-
-                if (sortOrder === 'asc') {
-                    return aValue > bValue ? 1 : -1;
-                } else {
-                    return aValue < bValue ? 1 : -1;
-                }
-            });
-
-            cards.forEach(card => column.appendChild(card));
-        });
-    }
-
-    // Drag and drop functionality
-    taskCards.forEach(card => {
-        card.addEventListener('dragstart', (e) => {
-            draggingCard = card;
-            card.classList.add('dragging');
-            e.dataTransfer.setData('text/plain', card.dataset.taskId);
-        });
-
-        card.addEventListener('dragend', () => {
-            card.classList.remove('dragging');
-            draggingCard = null;
-        });
-    });
-
-    columns.forEach(column => {
-        column.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            const afterElement = getDragAfterElement(column, e.clientY);
-            if (draggingCard) {
-                if (afterElement) {
-                    column.insertBefore(draggingCard, afterElement);
-                } else {
-                    column.appendChild(draggingCard);
-                }
-            }
-        });
-
-        column.addEventListener('drop', (e) => {
-            e.preventDefault();
-            if (draggingCard) {
-                const taskId = e.dataTransfer.getData('text/plain');
-                const newStatus = column.dataset.status;
-                
-                // Update task status via API
-                fetch(`/tasks/${taskId}/edit/`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken'),
-                    },
-                    body: JSON.stringify({ 
-                        field: 'status',
-                        value: newStatus
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Update column counts
-                        updateColumnCounts();
-                    } else {
-                        // Revert the drag if the update failed
-                        alert('Failed to update task status');
-                        location.reload();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    location.reload();
-                });
-            }
-        });
-    });
-
-    function getDragAfterElement(column, y) {
-        const draggableElements = [...column.querySelectorAll('.task-card:not(.dragging)')];
-        return draggableElements.reduce((closest, child) => {
-            const box = child.getBoundingClientRect();
-            const offset = y - box.top - box.height / 2;
-            if (offset < 0 && offset > closest.offset) {
-                return { offset: offset, element: child };
-            } else {
-                return closest;
-            }
-        }, { offset: Number.NEGATIVE_INFINITY }).element;
-    }
-
-    function updateColumnCounts() {
-        columns.forEach(column => {
-            const status = column.dataset.status;
-            const count = column.querySelectorAll('.task-card').length;
-            document.getElementById(`count-${status}`).textContent = count;
-        });
-    }
-
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
+        // Calculate time remaining percentage
+        const totalDuration = endDate - startDate;
+        const elapsed = today - startDate;
+        const remaining = endDate - today;
+        
+        let percentile = 0;
+        let timeRemainingText = '';
+        let progressText = '';
+        
+        if (today < startDate) {
+            // Task hasn't started yet
+            percentile = 0;
+            const daysUntilStart = Math.ceil((startDate - today) / (1000 * 60 * 60 * 24));
+            timeRemainingText = `${daysUntilStart} days until start`;
+            progressText = '0% done';
+        } else if (today > endDate) {
+            // Task is overdue
+            percentile = 100;
+            const daysOverdue = Math.ceil((today - endDate) / (1000 * 60 * 60 * 24));
+            timeRemainingText = `${daysOverdue} days overdue`;
+            progressText = '100% done';
+        } else {
+            // Task is in progress
+            percentile = Math.round((elapsed / totalDuration) * 100);
+            const daysRemaining = Math.ceil(remaining / (1000 * 60 * 60 * 24));
+            timeRemainingText = `${daysRemaining} days left`;
+            progressText = `${percentile}% done`;
         }
-        return cookieValue;
-    }
-
-    // Create task functionality
-    document.getElementById('createTaskBtn').addEventListener('click', function() {
-        const form = document.getElementById('createTaskForm');
-        if (form.checkValidity()) {
-            const taskData = {
-                title: document.getElementById('title').value,
-                description: document.getElementById('description').value,
-                owner: document.getElementById('owner').value,
-                status: document.getElementById('status').value,
-                priority: document.getElementById('priority').value,
-                notes: document.getElementById('notes').value,
-                budget: document.getElementById('budget').value || null,
-                start_date: document.getElementById('start_date').value,
-                end_date: document.getElementById('end_date').value
-            };
-
-            fetch('/tasks/new/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
-                },
-                body: JSON.stringify(taskData)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    location.reload();
-                } else {
-                    alert('Failed to create task: ' + data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Failed to create task: ' + error);
-            });
+        
+        // Update the displays for this specific task bar
+        const taskBar = bar.closest('.task-bar');
+        const timeRemainingElement = taskBar.querySelector('.time-remaining-display');
+        const progressElement = taskBar.querySelector('.progress-display');
+        
+        if (timeRemainingElement) {
+            timeRemainingElement.textContent = timeRemainingText;
         }
-        form.classList.add('was-validated');
+        if (progressElement) {
+            progressElement.textContent = progressText;
+        }
+        
+        // Set the progress bar width based on actual completion percentage
+        bar.style.width = percentile + '%';
+        
+        // Add color class based on completion status
+        if (percentile === 0) {
+            bar.classList.add('not-started');
+        } else if (percentile < 25) {
+            bar.classList.add('just-started');
+        } else if (percentile < 50) {
+            bar.classList.add('in-progress');
+        } else if (percentile < 75) {
+            bar.classList.add('almost-done');
+        } else if (percentile < 100) {
+            bar.classList.add('nearly-complete');
+        } else {
+            bar.classList.add('completed');
+        }
     });
 });
 </script>

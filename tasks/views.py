@@ -122,10 +122,32 @@ def kanban(request):
     # Filter tasks by current user only
     tasks = Task.objects.filter(user=request.user)
     
+    # Calculate task durations and group by status
+    status_data = {}
+    for status_choice in Task.STATUS_CHOICES:
+        status_code = status_choice[0]
+        status_name = status_choice[1]
+        
+        status_tasks = tasks.filter(status=status_code)
+        task_durations = []
+        
+        for task in status_tasks:
+            duration = (task.end_date - task.start_date).days
+            task_durations.append({
+                'title': task.title,
+                'duration': duration,
+                'start_date': task.start_date.isoformat(),
+                'end_date': task.end_date.isoformat()
+            })
+        
+        status_data[status_code] = {
+            'name': status_name,
+            'tasks': task_durations,
+            'count': len(task_durations)
+        }
+    
     context = {
-        'tasks': tasks,
-        'status_choices': Task.STATUS_CHOICES,
-        'priority_choices': Task.PRIORITY_CHOICES
+        'status_data': status_data
     }
     return render(request, 'tasks/kanban.html', context)
 
