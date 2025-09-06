@@ -5,7 +5,7 @@
     <div class="row mb-4">
         <div class="col">
             <h2 class="mb-0">
-                <i class="fas fa-chart-line me-2"></i>Dashboard
+                <i"></i>Dashboard
             </h2>
         </div>
     </div>
@@ -19,7 +19,7 @@
                         <div>
                             <h6 class="card-title mb-0">Not Started</h6>
                             <h2 class="my-2">{{ not_started }}</h2>
-                            <p class="mb-0 small">Tasks to begin</p>
+                            <p class="mb-0 small">Start the Task</p>
                         </div>
                         <i class="fas fa-hourglass-start fa-2x opacity-50"></i>
                     </div>
@@ -47,7 +47,7 @@
                         <div>
                             <h6 class="card-title mb-0">Stuck</h6>
                             <h2 class="my-2">{{ stuck }}</h2>
-                            <p class="mb-0 small">Tasks needing attention</p>
+                            <p class="mb-0 small">Tasks needs attention</p>
                         </div>
                         <i class="fas fa-exclamation-triangle fa-2x opacity-50"></i>
                     </div>
@@ -73,7 +73,7 @@
         <div class="col-12 col-lg-8">
             <div class="card h-100">
                 <div class="card-header">
-                    <h5 class="card-title mb-0">Task Progress Overview</h5>
+                    <h5 class="card-title mb-0">Task Progress Histogram</h5>
                 </div>
                 <div class="card-body">
                     <canvas id="taskStatsChart"></canvas>
@@ -83,7 +83,7 @@
         <div class="col-12 col-lg-4">
             <div class="card h-100">
                 <div class="card-header">
-                    <h5 class="card-title mb-0">Task Distribution</h5>
+                    <h5 class="card-title mb-0">Pie chart</h5>
                 </div>
                 <div class="card-body">
                     <canvas id="taskPieChart"></canvas>
