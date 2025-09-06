@@ -57,65 +57,24 @@ def logout_view(request):
 
 @login_required
 def task_list(request):
-    # Get sorting parameters from request
-    sort_by = request.GET.get('sort_by', 'id')
+    # Get sort order from request (ascending/descending only)
     sort_order = request.GET.get('sort_order', 'asc')
     
-    print(f"Sorting by: {sort_by}, Order: {sort_order}")
+    print(f"Sort order: {sort_order}")
     
     # Filter tasks by current user only
     tasks_queryset = Task.objects.filter(user=request.user)
-    
-    # Validate sort_by parameter
-    valid_columns = ['id', 'title', 'status', 'priority', 'budget', 'start_date', 'end_date', 'last_updated']
-    if sort_by not in valid_columns:
-        print(f"Invalid sort_by: {sort_by}, defaulting to 'id'")
-        sort_by = 'id'
     
     # Validate sort_order parameter
     if sort_order not in ['asc', 'desc']:
         print(f"Invalid sort_order: {sort_order}, defaulting to 'asc'")
         sort_order = 'asc'
     
-    # Handle special cases for sorting
-    if sort_by == 'status':
-        # Create a custom ordering for status
-        status_order = []
-        for status_choice in Task.STATUS_CHOICES:
-            status_order.append(status_choice[0])
-        
-        # Use Django's order_by with Case/When for custom ordering
-        from django.db.models import Case, When, IntegerField
-        status_ordering = Case(
-            *[When(status=status, then=idx) for idx, status in enumerate(status_order)],
-            output_field=IntegerField()
-        )
-        
-        if sort_order == 'asc':
-            tasks_queryset = tasks_queryset.annotate(status_order=status_ordering).order_by('status_order')
-        else:
-            tasks_queryset = tasks_queryset.annotate(status_order=status_ordering).order_by('-status_order')
-            
-    elif sort_by == 'priority':
-        # Create a custom ordering for priority
-        priority_order = []
-        for priority_choice in Task.PRIORITY_CHOICES:
-            priority_order.append(priority_choice[0])
-        
-        from django.db.models import Case, When, IntegerField
-        priority_ordering = Case(
-            *[When(priority=priority, then=idx) for idx, priority in enumerate(priority_order)],
-            output_field=IntegerField()
-        )
-        
-        if sort_order == 'asc':
-            tasks_queryset = tasks_queryset.annotate(priority_order=priority_ordering).order_by('priority_order')
-        else:
-            tasks_queryset = tasks_queryset.annotate(priority_order=priority_ordering).order_by('-priority_order')
+    # Apply ordering based on sort_order
+    if sort_order == 'desc':
+        tasks_queryset = tasks_queryset.order_by('-last_updated')
     else:
-        # For other fields, use standard Django ordering
-        order_field = sort_by if sort_order == 'asc' else f'-{sort_by}'
-        tasks_queryset = tasks_queryset.order_by(order_field)
+        tasks_queryset = tasks_queryset.order_by('last_updated')
     
     # Convert to list for template
     tasks = list(tasks_queryset.values())
@@ -126,7 +85,6 @@ def task_list(request):
         'tasks': tasks,
         'status_choices': Task.STATUS_CHOICES,
         'priority_choices': Task.PRIORITY_CHOICES,
-        'current_sort': sort_by,
         'current_order': sort_order
     }
     return render(request, 'tasks/task_list.html', context)

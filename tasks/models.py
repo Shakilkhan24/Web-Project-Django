@@ -24,7 +24,6 @@ class Task(models.Model):
     priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium')
     notes = models.TextField(blank=True, null=True)
     budget = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
-    file = models.FileField(upload_to='task_files/', blank=True, null=True)
     start_date = models.DateField()
     end_date = models.DateField()
     last_updated = models.DateTimeField(auto_now=True)

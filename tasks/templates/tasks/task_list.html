@@ -8,18 +8,6 @@
             <h3 class="card-title mb-0">Task Manager</h3>
             <div>
                 <div class="btn-group me-2">
-                    <button type="button" class="btn btn-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-sort"></i> Sort By
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item sort-option" data-sort="status">Status</a></li>
-                        <li><a class="dropdown-item sort-option" data-sort="priority">Priority</a></li>
-                        <li><a class="dropdown-item sort-option" data-sort="budget">Budget</a></li>
-                        <li><a class="dropdown-item sort-option" data-sort="start_date">Start Date</a></li>
-                        <li><a class="dropdown-item sort-option" data-sort="end_date">End Date</a></li>
-                    </ul>
-                </div>
-                <div class="btn-group">
                     <button type="button" class="btn btn-light" id="sortOrderBtn" data-order="asc">
                         <i class="fas fa-sort-amount-down-alt"></i> Ascending
                     </button>
@@ -62,7 +50,7 @@
                             <td>
                                 <select class="form-select form-select-sm priority-select" data-field="priority">
                                     {% for value, label in priority_choices %}
-                                    <option value="{{ value }}" {% if task.status == value %}selected{% endif %}>{{ label }}</option>
+                                    <option value="{{ value }}" {% if task.priority == value %}selected{% endif %}>{{ label }}</option>
                                     {% endfor %}
                                 </select>
                             </td>
@@ -228,17 +216,13 @@
                                 <textarea class="form-control notes-textarea" id="createNotes"></textarea>
                             </div>
 
-                            <!-- Budget & File -->
+                            <!-- Budget -->
                             <div class="col-md-6">
                                 <label for="createBudget" class="form-label">Budget</label>
                                 <div class="input-group">
                                     <span class="input-group-text">$</span>
                                     <input type="number" step="0.01" class="form-control" id="createBudget">
                                 </div>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="createFile" class="form-label">File Attachment</label>
-                                <input type="file" class="form-control" id="createFile">
                             </div>
 
                             <!-- Dates -->
@@ -412,16 +396,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Get current sort state from template
-    const currentSort = "{{ current_sort }}";
+    // Get current sort order from template
     const currentOrder = "{{ current_order }}";
-    
-    // Highlight active sort option
-    document.querySelectorAll('.sort-option').forEach(option => {
-        if (option.dataset.sort === currentSort) {
-            option.classList.add('active');
-        }
-    });
     
     // Set initial sort order button state
     const sortOrderBtn = document.getElementById('sortOrderBtn');
@@ -431,25 +407,15 @@ document.addEventListener('DOMContentLoaded', function() {
         sortOrderBtn.innerHTML = '<i class="fas fa-sort-amount-down"></i> Descending';
     }
 
-    // Sort by column
-    document.querySelectorAll('.sort-option').forEach(option => {
-        option.addEventListener('click', function() {
-            const newSort = this.dataset.sort;
-            console.log("Sorting by:", newSort, "Order:", currentOrder);
-            applySorting(newSort, currentOrder);
-        });
-    });
-
     // Toggle sort order
     document.getElementById('sortOrderBtn').addEventListener('click', function() {
         const newOrder = currentOrder === 'asc' ? 'desc' : 'asc';
-        console.log("Sorting by:", currentSort, "Order:", newOrder);
-        applySorting(currentSort, newOrder);
+        console.log("Sort order:", newOrder);
+        applySorting(newOrder);
     });
 
-    function applySorting(sortBy, sortOrder) {
+    function applySorting(sortOrder) {
         const url = new URL(window.location.href);
-        url.searchParams.set('sort_by', sortBy);
         url.searchParams.set('sort_order', sortOrder);
         console.log("New URL:", url.toString());
         window.location.href = url.toString();
@@ -569,10 +535,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     .btn-close-white {
         filter: invert(1);
-    }
-    .sort-option.active {
-        background-color: #f8f9fa;
-        font-weight: 500;
     }
     #sortOrderBtn {
         min-width: 120px;
