@@ -10,6 +10,6 @@ urlpatterns = [
     path('tasks/<int:pk>/delete/', views.task_delete, name='task_delete'),
     path('tasks/export-csv/', views.export_tasks_csv, name='export_tasks_csv'),
     path('tasks/import-csv/', views.import_tasks_csv, name='import_tasks_csv'),
-    path('progress/', views.kanban, name='kanban'),
+    path('progress/', views.progress, name='kanban'),
     path('dashboard/', views.dashboard, name='dashboard'),
 ]

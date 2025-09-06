@@ -121,14 +121,22 @@
             <div class="modal-body">
                 <div class="alert alert-info">
                     <h6><i class="fas fa-info-circle me-2"></i>CSV Format Requirements:</h6>
-                    <ul class="mb-0">
-                        <li>File must be in CSV format</li>
-                        <li>Required columns: Title, Description, Owner, Status, Priority, Notes, Budget, Start Date, End Date</li>
-                        <li>Dates should be in YYYY-MM-DD format</li>
-                        <li>Budget should be a number (optional)</li>
-                        <li>Status options: not_started, working, stuck, done</li>
-                        <li>Priority options: critical, high, medium, low</li>
-                    </ul>
+                    <pre>
+<code>
+{
+  "Title": "String",
+  "Description": "String",
+  "Owner": "gmail",
+  "Status": "not_started | working | stuck | done",
+  "Priority": "critical | high | medium | low",
+  "Notes": "String",
+  "Budget": "int (optional)",
+  "Start Date": "YYYY-MM-DD",
+  "End Date": "YYYY-MM-DD"
+}
+</code>
+</pre>
+
                 </div>
                 
                 <form method="post" action="{% url 'import_tasks_csv' %}" enctype="multipart/form-data">

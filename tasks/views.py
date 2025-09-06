@@ -112,7 +112,7 @@ def dashboard(request):
     return render(request, 'tasks/dashboard.html', context)
 
 @login_required
-def kanban(request):
+def progress(request):
     # Filter tasks by current user only
     tasks = Task.objects.filter(user=request.user)
     
