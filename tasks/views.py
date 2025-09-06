@@ -149,7 +149,7 @@ def kanban(request):
     context = {
         'status_data': status_data
     }
-    return render(request, 'tasks/kanban.html', context)
+    return render(request, 'tasks/progress.html', context)
 
 @csrf_exempt
 @login_required
